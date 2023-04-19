@@ -1,4 +1,8 @@
 #include <wb.h>
+#include <stdio.h>
+
+#define BLOCKSIZE 128
+#define CEILDIV(X, Y)   (((X) - 1) / (Y) + 1)
 
 #define wbCheck(stmt)                                                     \
   do {                                                                    \
@@ -13,14 +17,30 @@
 __global__ void spmvJDSKernel(float *out, int *matColStart, int *matCols,
                               int *matRowPerm, int *matRows,
                               float *matData, float *vec, int dim) {
-  //@@ insert spmv kernel for jds format
+  auto bx = blockIdx.x;
+  auto tx = threadIdx.x;
+  auto nt = blockDim.x;
+  auto row = bx * nt + tx;
+  if (row < dim) {
+    float dot = 0;
+    for (int i = 0; i < matRows[row]; ++i) {
+      auto col = matColStart[i] + row;
+      dot += vec[matCols[col]] * matData[col];
+    }
+    out[matRowPerm[row]] = dot;
+  }
 }
 
 static void spmvJDS(float *out, int *matColStart, int *matCols,
                     int *matRowPerm, int *matRows, float *matData,
                     float *vec, int dim) {
 
-  //@@ invoke spmv kernel for jds format
+  dim3 nb(CEILDIV(dim, BLOCKSIZE));
+  dim3 nt(BLOCKSIZE);
+
+  spmvJDSKernel<<<nb, nt>>>(out, matColStart, matCols,
+    matRowPerm, matRows, matData,
+    vec, dim);
 }
 
 int main(int argc, char **argv) {
