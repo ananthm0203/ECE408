@@ -1,8 +1,15 @@
 #include <cmath>
 #include <iostream>
 #include "gpu-new-forward.h"
+#include <cmath>
+#include <iostream>
+#include "gpu-new-forward.h"
+
+// Optimization 1
 
 #define TILE_SIZE 16
+
+__constant__ float k_const[8192];
 
 #define cudaErrCheck()                                                      \
 {                                                                           \
@@ -18,21 +25,33 @@ __global__ void conv_forward_kernel(float *y, const float *x, const float *k, co
 {
     const int H_out = H - K + 1;
     const int W_out = W - K + 1;
+    extern __shared__ float x_shared[];
+    const auto MSIZE = TILE_SIZE + K - 1;
+
 #define y4d(i3, i2, i1, i0) y[(i3) * (M * H_out * W_out) + (i2) * (H_out * W_out) + (i1) * (W_out) + i0]
 #define x4d(i3, i2, i1, i0) x[(i3) * (C * H * W) + (i2) * (H * W) + (i1) * (W) + i0]
-#define k4d(i3, i2, i1, i0) k[(i3) * (C * K * K) + (i2) * (K * K) + (i1) * (K) + i0]
+#define k4d(i3, i2, i1, i0) k_const[(i3) * (C * K * K) + (i2) * (K * K) + (i1) * (K) + i0]
 
     const int W_grid = (W_out - 1) / TILE_SIZE + 1;
-    auto h = (blockIdx.y / W_grid) * TILE_SIZE + threadIdx.y;
-    auto w = (blockIdx.y % W_grid) * TILE_SIZE + threadIdx.x;
+    auto tx = threadIdx.x;
+    auto ty = threadIdx.y;
+    auto h = (blockIdx.y / W_grid) * TILE_SIZE + ty;
+    auto w = (blockIdx.y % W_grid) * TILE_SIZE + tx;
     auto m = blockIdx.z;
     auto b = blockIdx.x;
-    if (h < H_out && w < W_out) {
-        float acc = 0.;
-        for(int c = 0; c < C; c++) 
+    // Load tile into shared memory
+    float acc = 0;
+    for (int c = 0; c < C; ++c) {
+        x_shared[ty * MSIZE + tx] = h < H && w < W ? x4d(b, c, h, w) : 0;
+        __syncthreads();
+        if (tx < TILE_SIZE && ty < TILE_SIZE && h < H_out && w < W_out) {
             for(int p = 0; p < K; p++)
                 for (int q = 0; q < K; q++)
-                    acc += x4d(b, c, h + p, w + q) * k4d(m, c, p, q);
+                    acc += k4d(m, c, p, q) * x_shared[(ty + p) * MSIZE + (tx + q)];
+        }
+        __syncthreads();
+    }
+    if (tx < TILE_SIZE && ty < TILE_SIZE && h < H_out && w < W_out && b < B && m < M) {
         y4d(b, m, h, w) = acc;
     }
 
@@ -49,10 +68,11 @@ __host__ void GPUInterface::conv_forward_gpu_prolog(const float *host_y, const f
 
     cudaMalloc(device_y_ptr, B * M * H_out * W_out * sizeof(float));
     cudaMalloc(device_x_ptr, B * C * H * W * sizeof(float));
-    cudaMalloc(device_k_ptr, M * C * K * K * sizeof(float));
+    // cudaMalloc(device_k_ptr, M * C * K * K * sizeof(float));
 
     cudaMemcpy(*device_x_ptr, host_x, B * C * H * W * sizeof(float), cudaMemcpyHostToDevice);
-    cudaMemcpy(*device_k_ptr, host_k, M * C * K * K * sizeof(float), cudaMemcpyHostToDevice);
+    // cudaMemcpy(*device_k_ptr, host_k, M * C * K * K * sizeof(float), cudaMemcpyHostToDevice);
+    cudaMemcpyToSymbol(k_const, host_k, M * C * K * K * sizeof(float));
 
     // We pass double pointers for you to initialize the relevant device pointers,
     //  which are passed to the other two functions.
@@ -76,10 +96,12 @@ __host__ void GPUInterface::conv_forward_gpu(float *device_y, const float *devic
     int W_grid = (W_out - 1) / TILE_SIZE + 1;
     int H_grid = (H_out - 1) / TILE_SIZE + 1;
     int Y = W_grid * H_grid;
+    auto MSIZE = TILE_SIZE + K - 1;
+    auto sharedmem_size = sizeof(float) * (MSIZE * MSIZE);
 
-    dim3 nt(TILE_SIZE, TILE_SIZE);
+    dim3 nt(MSIZE, MSIZE);
     dim3 nb(B, Y, M);
-    conv_forward_kernel<<<nb, nt>>>(device_y, device_x, device_k, B, M, C, H, W, K);
+    conv_forward_kernel<<<nb, nt, sharedmem_size>>>(device_y, device_x, device_k, B, M, C, H, W, K);
     cudaDeviceSynchronize();
 }
 
