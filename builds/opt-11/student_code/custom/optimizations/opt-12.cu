@@ -35,50 +35,6 @@ __global__ void float2fp16(__half *x_f16, const float* x, const int C, const int
 #undef x_f4d
 }
 
-// template<int bits>
-// __global__ void fixed_to_float(float* x, const fixed_point_t *x_fixed, const int C, const int H, const int W) {
-// #define x4d(i3, i2, i1, i0) x[(i3) * (C * H * W) + (i2) * (H * W) + (i1) * (W) + i0]
-// #define x_f4d(i3, i2, i1, i0) x_fixed[(i3) * (C * H * W) + (i2) * (H * W) + (i1) * (W) + i0]
-//     const int W_grid = (W - 1) / TILE_SIZE + 1;
-//     auto h = (blockIdx.y / W_grid) * TILE_SIZE + threadIdx.y;
-//     auto w = (blockIdx.y % W_grid) * TILE_SIZE + threadIdx.x;
-//     auto c = blockIdx.z;
-//     auto b = blockIdx.x;
-//     if (h < H && w < W) {
-//         auto x_elem = x_f4d(b, c, h, w);
-//         x4d(b, c, h, w) = ((float)x_elem / (float)(1 << bits));
-//     }
-// #undef x4d
-// #undef x_f4d
-// }
-
-// __global__ void conv_forward_kernel(fixed_point_t *y, const fixed_point_t *x, const fixed_point_t *k, const int B, const int M, const int C, const int H, const int W, const int K)
-// {
-//     const int H_out = H - K + 1;
-//     const int W_out = W - K + 1;
-// #define y4d(i3, i2, i1, i0) y[(i3) * (M * H_out * W_out) + (i2) * (H_out * W_out) + (i1) * (W_out) + i0]
-// #define x4d(i3, i2, i1, i0) x[(i3) * (C * H * W) + (i2) * (H * W) + (i1) * (W) + i0]
-// #define k4d(i3, i2, i1, i0) k[(i3) * (C * K * K) + (i2) * (K * K) + (i1) * (K) + i0]
-
-//     const int W_grid = (W_out - 1) / TILE_SIZE + 1;
-//     auto h = (blockIdx.y / W_grid) * TILE_SIZE + threadIdx.y;
-//     auto w = (blockIdx.y % W_grid) * TILE_SIZE + threadIdx.x;
-//     auto m = blockIdx.z;
-//     auto b = blockIdx.x;
-//     if (h < H_out && w < W_out) {
-//         fixed_point_t acc = 0.;
-//         for(int c = 0; c < C; c++) 
-//             for(int p = 0; p < K; p++)
-//                 for (int q = 0; q < K; q++)
-//                     acc += x4d(b, c, h + p, w + q) * k4d(m, c, p, q);
-//         y4d(b, m, h, w) = acc;
-//     }
-
-// #undef y4d
-// #undef x4d
-// #undef k4d
-// }
-
 __global__ void conv_forward_kernel(float *y, const __half *x, const __half *k, const int B, const int M, const int C, const int H, const int W, const int K)
 {
     const int H_out = H - K + 1;
@@ -146,17 +102,6 @@ __host__ void GPUInterface::conv_forward_gpu_prolog(const float *host_y, const f
         float2fp16<<<nb, nt>>>(device_k_fp, device_k, C, K, K);
     }
 
-    // We pass double pointers for you to initialize the relevant device pointers,
-    //  which are passed to the other two functions.
-
-    // Useful snippet for error checking
-    // cudaError_t error = cudaGetLastError();
-    // if(error != cudaSuccess)
-    // {
-    //     std::cout<<"CUDA error: "<<cudaGetErrorString(error)<<std::endl;
-    //     exit(-1);
-    // }
-
 }
 
 
@@ -173,21 +118,6 @@ __host__ void GPUInterface::conv_forward_gpu(float *device_y, const float *devic
     conv_forward_kernel<<<nb, nt>>>(device_y, device_x_fp, device_k_fp, B, M, C, H, W, K);
     cudaDeviceSynchronize();
 }
-
-// __host__ void GPUInterface::conv_forward_gpu(float *device_y, const float *device_x, const float *device_k, const int B, const int M, const int C, const int H, const int W, const int K)
-// {
-//     // Set the kernel dimensions and call the kernel
-//     const int H_out = H - K + 1;
-//     const int W_out = W - K + 1;
-//     int W_grid = (W_out - 1) / TILE_SIZE + 1;
-//     int H_grid = (H_out - 1) / TILE_SIZE + 1;
-//     int Y = W_grid * H_grid;
-
-//     dim3 nt(TILE_SIZE, TILE_SIZE);
-//     dim3 nb(B, Y, M);
-//     conv_forward_kernel<<<nb, nt>>>(device_y, device_x, device_k, B, M, C, H, W, K);
-//     cudaDeviceSynchronize();
-// }
 
 
 __host__ void GPUInterface::conv_forward_gpu_epilog(float *host_output, float *device_output, float *device_input, float *device_mask, const int B, const int M, const int C, const int H, const int W, const int K)

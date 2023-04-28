@@ -2,7 +2,7 @@
 #include <iostream>
 #include "gpu-new-forward.h"
 
-// Baseline
+// Constant memory + loop unrolling + restrict + tuning
 
 #define TILE_SIZE_X 16
 #define TILE_SIZE_Y 16

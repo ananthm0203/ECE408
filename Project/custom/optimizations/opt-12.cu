@@ -3,7 +3,7 @@
 #include "gpu-new-forward.h"
 #include <cuda_fp16.h>
 
-// Optimization 12
+// Optimization 12 (FP16)
 
 #define TILE_SIZE 16
 

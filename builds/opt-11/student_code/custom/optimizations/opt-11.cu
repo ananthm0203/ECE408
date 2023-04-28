@@ -5,7 +5,8 @@
 // Optimization 11
 
 #define TILE_SIZE 16
-#define NUM_STREAMS 100
+#define NUM_STREAMS 10
+#define OVERLAP 2
 
 __constant__ float k_const[8192];
 cudaStream_t streams[NUM_STREAMS];
@@ -99,28 +100,25 @@ __host__ void GPUInterface::conv_forward_gpu(float *device_y, const float *devic
     dim3 nt(TILE_SIZE, TILE_SIZE);
     dim3 nb(B / NUM_STREAMS, Y, M);
 
-    for (int i = 0; i < NUM_STREAMS; ++i) {
-        int x_offset = x_batch_size * i;
-        int y_offset = y_batch_size * i;
-        cudaMemcpyAsync((float *)(device_x) + x_offset, (float *)(_host_x)  + x_offset, sizeof(float) * x_batch_size, cudaMemcpyHostToDevice, streams[i]);
-        // conv_forward_kernel<<<nb, nt, 0, streams[i]>>>((float *)(device_y) + y_offset, (float *)(device_x) + x_offset, device_k, B, M, C, H, W, K);
-        // cudaMemcpyAsync((float *)(_host_y) + y_offset, (float *)(device_y) + y_offset, sizeof(float) * y_batch_size, cudaMemcpyDeviceToHost, streams[i]);
-    }
-
-    for (int i = 0; i < NUM_STREAMS; ++i) {
-        int x_offset = x_batch_size * i;
-        int y_offset = y_batch_size * i;
-        // cudaMemcpyAsync((float *)(device_x) + x_offset, (float *)(_host_x)  + x_offset, sizeof(float) * x_batch_size, cudaMemcpyHostToDevice, streams[i]);
-        conv_forward_kernel<<<nb, nt, 0, streams[i]>>>((float *)(device_y) + y_offset, (float *)(device_x) + x_offset, device_k, B, M, C, H, W, K);
-        // cudaMemcpyAsync((float *)(_host_y) + y_offset, (float *)(device_y) + y_offset, sizeof(float) * y_batch_size, cudaMemcpyDeviceToHost, streams[i]);
-    }
-
-    for (int i = 0; i < NUM_STREAMS; ++i) {
-        int x_offset = x_batch_size * i;
-        int y_offset = y_batch_size * i;
-        // cudaMemcpyAsync((float *)(device_x) + x_offset, (float *)(_host_x)  + x_offset, sizeof(float) * x_batch_size, cudaMemcpyHostToDevice, streams[i]);
-        // conv_forward_kernel<<<nb, nt, 0, streams[i]>>>((float *)(device_y) + y_offset, (float *)(device_x) + x_offset, device_k, B, M, C, H, W, K);
-        cudaMemcpyAsync((float *)(_host_y) + y_offset, (float *)(device_y) + y_offset, sizeof(float) * y_batch_size, cudaMemcpyDeviceToHost, streams[i]);
+#pragma unroll
+    for (int i = 0; i < NUM_STREAMS; i += OVERLAP) {
+        constexpr j_max = NUM_STREAMS < OVERLAP + i ? NUM_STREAMS - i : OVERLAP;
+#pragma unroll
+        for (int j = 0; j < j_max; j++) {
+            int x_offset = x_batch_size * (i + j);
+            cudaMemcpyAsync((float *)(device_x) + x_offset, (float *)(_host_x)  + x_offset, sizeof(float) * x_batch_size, cudaMemcpyHostToDevice, streams[i]);
+        }
+#pragma unroll
+        for (int j = 0; j < j_max; j++) {
+            int x_offset = x_batch_size * (i + j);
+            int y_offset = y_batch_size * (i + j);
+            conv_forward_kernel<<<nb, nt, 0, streams[i]>>>((float *)(device_y) + y_offset, (float *)(device_x) + x_offset, device_k, B, M, C, H, W, K);
+        }
+#pragma unroll
+        for (int j = 0; j < j_max; j++) {
+            int y_offset = y_batch_size * (i + j);
+            cudaMemcpyAsync((float *)(_host_y) + y_offset, (float *)(device_y) + y_offset, sizeof(float) * y_batch_size, cudaMemcpyDeviceToHost, streams[i]);
+        }
     }
     cudaDeviceSynchronize();
     return;

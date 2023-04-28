@@ -2,7 +2,7 @@
 #include <iostream>
 #include "gpu-new-forward.h"
 
-// Optimization 4
+// Optimization 4 (constant memory weights)
 
 #define TILE_SIZE 16
 

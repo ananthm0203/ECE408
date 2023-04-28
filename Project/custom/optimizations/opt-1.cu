@@ -5,7 +5,7 @@
 #include <iostream>
 #include "gpu-new-forward.h"
 
-// Optimization 1
+// Optimization 1 (shared mem tile conv)
 
 #define TILE_SIZE_X 10
 #define TILE_SIZE_Y 10

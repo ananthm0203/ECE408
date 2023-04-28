@@ -7,8 +7,8 @@
 
 // Optimization 1
 
-#define TILE_SIZE_X 16
-#define TILE_SIZE_Y 16
+#define TILE_SIZE_X 10
+#define TILE_SIZE_Y 10
 
 #define cudaErrCheck()                                                      \
 {                                                                           \

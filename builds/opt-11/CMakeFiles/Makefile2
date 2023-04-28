@@ -64,8 +64,8 @@ CMAKE_BINARY_DIR = /build
 
 # All Build rule for target.
 CMakeFiles/m3.dir/all: CMakeFiles/ece408net.dir/all
-CMakeFiles/m3.dir/all: src/CMakeFiles/GpuConv.dir/all
 CMakeFiles/m3.dir/all: src/CMakeFiles/MiniDNNLib.dir/all
+CMakeFiles/m3.dir/all: src/CMakeFiles/GpuConv.dir/all
 	$(MAKE) -f CMakeFiles/m3.dir/build.make CMakeFiles/m3.dir/depend
 	$(MAKE) -f CMakeFiles/m3.dir/build.make CMakeFiles/m3.dir/build
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/build/CMakeFiles --progress-num=28,29 "Built target m3"
@@ -103,8 +103,8 @@ clean: CMakeFiles/m3.dir/clean
 
 # All Build rule for target.
 CMakeFiles/m2.dir/all: CMakeFiles/ece408net.dir/all
-CMakeFiles/m2.dir/all: src/CMakeFiles/GpuConv.dir/all
 CMakeFiles/m2.dir/all: src/CMakeFiles/MiniDNNLib.dir/all
+CMakeFiles/m2.dir/all: src/CMakeFiles/GpuConv.dir/all
 	$(MAKE) -f CMakeFiles/m2.dir/build.make CMakeFiles/m2.dir/depend
 	$(MAKE) -f CMakeFiles/m2.dir/build.make CMakeFiles/m2.dir/build
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/build/CMakeFiles --progress-num=26,27 "Built target m2"
@@ -179,8 +179,8 @@ clean: CMakeFiles/ece408net.dir/clean
 
 # All Build rule for target.
 CMakeFiles/final.dir/all: CMakeFiles/ece408net.dir/all
-CMakeFiles/final.dir/all: src/CMakeFiles/GpuConv.dir/all
 CMakeFiles/final.dir/all: src/CMakeFiles/MiniDNNLib.dir/all
+CMakeFiles/final.dir/all: src/CMakeFiles/GpuConv.dir/all
 	$(MAKE) -f CMakeFiles/final.dir/build.make CMakeFiles/final.dir/depend
 	$(MAKE) -f CMakeFiles/final.dir/build.make CMakeFiles/final.dir/build
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/build/CMakeFiles --progress-num=22,23 "Built target final"
@@ -218,8 +218,8 @@ clean: CMakeFiles/final.dir/clean
 
 # All Build rule for target.
 CMakeFiles/m1.dir/all: CMakeFiles/ece408net.dir/all
-CMakeFiles/m1.dir/all: src/CMakeFiles/GpuConv.dir/all
 CMakeFiles/m1.dir/all: src/CMakeFiles/MiniDNNLib.dir/all
+CMakeFiles/m1.dir/all: src/CMakeFiles/GpuConv.dir/all
 	$(MAKE) -f CMakeFiles/m1.dir/build.make CMakeFiles/m1.dir/depend
 	$(MAKE) -f CMakeFiles/m1.dir/build.make CMakeFiles/m1.dir/build
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/build/CMakeFiles --progress-num=24,25 "Built target m1"
